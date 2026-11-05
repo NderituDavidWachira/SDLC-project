@@ -1,0 +1,33 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SDLC Guard{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+{% if user.is_authenticated %}
+<div class="shell">
+  <aside class="side">
+    <div class="brand">SDLC Guard<small>Code factory security</small></div>
+    <nav aria-label="Main">
+      <a href="{% url 'dashboard' %}" {% if request.path == '/' %}class="on"{% endif %}>Dashboard</a>
+      {% if user.role == 'admin' or user.role == 'auditor' or user.is_superuser %}
+      <a href="{% url 'audit-log' %}" {% if '/audit/' in request.path %}class="on"{% endif %}>Audit log</a>{% endif %}
+    </nav>
+    <div class="userbox">
+      Signed in as <strong>{{ user.username }}</strong><br>{{ user.get_role_display }}
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
+    </div>
+  </aside>
+  <main>
+    {% for m in messages %}<div class="msg {{ m.tags }}" role="status">{{ m }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% else %}
+<main class="login">{% block public %}{% endblock %}</main>
+{% endif %}
+</body>
+</html>

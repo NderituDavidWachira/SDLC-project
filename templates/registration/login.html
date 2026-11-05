@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Sign in · SDLC Guard{% endblock %}
+{% block public %}
+<h1>SDLC Guard</h1>
+<p class="sub">Sign in to see the risk across your code factory.</p>
+<div class="panel">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+    <div class="form-row"><label for="id_username">Username</label>
+      <input type="text" name="username" id="id_username" autocomplete="username" autofocus required></div>
+    <div class="form-row"><label for="id_password">Password</label>
+      <input type="password" name="password" id="id_password" autocomplete="current-password" required></div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="btn" type="submit">Sign in</button>
+  </form>
+</div>
+{% endblock %}

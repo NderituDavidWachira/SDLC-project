@@ -1,0 +1,57 @@
+version: 2.1
+
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.12
+    environment:
+      DJANGO_SECRET_KEY: ci-only-not-a-real-secret
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: pip install -r requirements-dev.txt
+      - run:
+          name: Lint
+          command: flake8 .
+      - run:
+          name: Security scan (code)
+          command: bandit -r accounts audit config dashboard scanner -x '*/tests.py' -q
+      - run:
+          name: Security scan (dependencies)
+          command: pip-audit -r requirements.txt
+      - run:
+          name: Unit tests with coverage
+          command: |
+            coverage run manage.py test
+            coverage report --fail-under=70
+  build:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build Docker image
+          command: docker build -t sdlcguard:${CIRCLE_SHA1} .
+  deploy_staging:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run: ./scripts/deploy_staging.sh
+
+workflows:
+  ci_cd:
+    jobs:
+      - test
+      - build:
+          requires: [test]
+          filters:
+            branches:
+              only: main
+      - hold:
+          type: approval
+          requires: [build]
+      - deploy_staging:
+          requires: [hold]

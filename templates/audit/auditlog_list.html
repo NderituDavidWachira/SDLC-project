@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Audit log · SDLC Guard{% endblock %}
+{% block content %}
+<h1>Audit log</h1><p class="sub">Who did what, and when. Entries cannot be edited or deleted in the app.</p>
+<section class="panel"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Detail</th><th>IP</th></tr></thead><tbody>
+{% for e in object_list %}<tr><td>{{ e.timestamp|date:"d M Y H:i:s" }}</td><td>{{ e.username|default:"-" }}</td><td>{{ e.action }}</td><td>{{ e.detail }}</td><td>{{ e.ip_address|default:"-" }}</td></tr>
+{% empty %}<tr><td colspan="5" class="muted">No entries yet.</td></tr>{% endfor %}</tbody></table>
+{% if is_paginated %}<div class="pager">{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+<span class="muted">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>{% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}</div>{% endif %}
+</section>
+{% endblock %}

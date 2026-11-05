@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard · SDLC Guard{% endblock %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>Is the code factory safe?</h1>
+    <p class="sub">{% if last_scan %}Last scan {{ last_scan.finished_at|date:"d M Y, H:i" }}
+      {% if last_scan.started_by %}by {{ last_scan.started_by }}{% endif %}
+      · {{ last_scan.new_count }} new · {{ last_scan.fixed_count }} fixed
+      {% else %}No scan has run yet.{% endif %}</p>
+  </div>
+  {% if can_scan %}
+  <form method="post" action="{% url 'run-scan' %}">{% csrf_token %}
+    <button class="btn" type="submit">Run scan now</button></form>
+  {% endif %}
+</div>
+
+<div class="line" aria-label="Risk by pillar">
+  {% for s in summaries %}
+  <a class="station {% if pillar == s.slug %}active{% endif %}" href="?pillar={{ s.slug }}{% if show_all %}&show=all{% endif %}">
+    <div class="dot lv-{{ s.level }}">{{ s.open }}</div>
+    <b>{{ s.name }}</b>
+    <span>{{ s.level }} risk · {{ s.score }}/100</span>
+  </a>
+  {% endfor %}
+</div>
+
+<div class="grid2">
+  <section class="panel"><h2>Open findings by pillar</h2>
+    <img alt="Stacked bar chart of open findings by pillar and severity" src="data:image/png;base64,{{ chart_pillar }}"></section>
+  <section class="panel"><h2>Severity mix</h2>
+    <img alt="Donut chart of open findings by severity" src="data:image/png;base64,{{ chart_severity }}"></section>
+</div>
+
+<section class="panel">
+  <div class="head tight">
+    <h2>{% if pillar %}{{ pillar_name }} findings{% else %}All findings{% endif %}</h2>
+    <div class="tag">
+      {% if pillar %}<a href="?{% if show_all %}show=all{% endif %}">All pillars</a> · {% endif %}
+      {% if show_all %}<a href="?{% if pillar %}pillar={{ pillar }}{% endif %}">Show open only</a>
+      {% else %}<a href="?show=all{% if pillar %}&pillar={{ pillar }}{% endif %}">Include fixed and ignored</a>{% endif %}
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Severity</th><th>What was found</th><th>Where</th><th>Pillar</th>{% if can_change %}<th>Action</th>{% endif %}</tr></thead>
+    <tbody>
+    {% for f in findings %}
+      <tr>
+        <td><span class="badge {{ f.severity }}">{{ f.severity }}</span></td>
+        <td>
+          <strong>{{ f.title }}</strong>{% if f.status != 'open' %} <span class="tag">({{ f.get_status_display }})</span>{% endif %}
+          <details><summary>How to fix</summary>
+            <p>{{ f.fix }}</p>
+            {% if f.evidence %}<p class="tag">Evidence (secrets masked): <code>{{ f.evidence }}</code></p>{% endif %}
+            {% if f.technique %}<p class="tag">Attack type: {{ f.technique }}</p>{% endif %}
+          </details>
+        </td>
+        <td class="where">{{ f.location }}</td>
+        <td>{{ f.get_pillar_display }}</td>
+        {% if can_change %}
+        <td class="actions">
+          <form method="post" action="{% url 'finding-status' f.pk %}">{% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% if f.status == 'open' %}
+              <button class="btn alt" name="status" value="resolved" type="submit">Fixed</button>
+              <button class="btn alt" name="status" value="ignored" type="submit">Ignore</button>
+            {% else %}
+              <button class="btn alt" name="status" value="open" type="submit">Reopen</button>
+            {% endif %}
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="muted">{% if last_scan %}Nothing to show. Good news, or run another scan.{% else %}Nothing here yet. Press "Run scan now" to check this computer and your projects.{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
