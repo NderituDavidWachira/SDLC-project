@@ -83,3 +83,23 @@ code { font-family: Consolas, "Courier New", monospace; font-size: 12.5px; backg
 .where { font-family: Consolas, "Courier New", monospace; font-size: 12.5px; word-break: break-all; max-width: 240px; }
 .actions form { display: flex; gap: 6px; }
 .actions .btn { padding: 4px 10px; font-size: 13px; }
+.scanbox { margin-bottom: 18px; }
+.areas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 28px; margin: 6px 0 14px; }
+.areas fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.areas legend { font-size: 12.5px; color: var(--muted); padding: 0; margin-bottom: 4px; font-weight: 600; }
+.area { display: flex; gap: 9px; align-items: flex-start; padding: 5px 0; cursor: pointer; margin: 0; color: var(--ink); font-size: 14px; }
+.area input { width: auto; margin-top: 4px; accent-color: var(--accent); }
+.area small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.area.off { opacity: .5; cursor: not-allowed; }
+button.link { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
+@media (max-width: 860px) { .areas { grid-template-columns: 1fr; } }
+.scanbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 4px 0 10px; }
+.drop { position: relative; }
+.drop > summary { list-style: none; cursor: pointer; background: #fff; border: 1px solid #b8c4c8; border-radius: 4px; padding: 8px 14px; min-width: 270px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.drop > summary::-webkit-details-marker { display: none; }
+.drop > summary::after { content: "\25BE"; color: var(--muted); }
+.drop[open] > summary { border-color: var(--accent); }
+.drop-panel { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; width: min(780px, 92vw); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 18px; box-shadow: 0 10px 28px rgba(18, 52, 59, .2); }
+.btn:disabled { opacity: .6; cursor: wait; }
+.laststrip { color: var(--muted); margin: 0 0 18px; font-size: 14px; }
+.laststrip b { color: var(--ink); }

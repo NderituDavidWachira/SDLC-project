@@ -199,8 +199,9 @@ class EngineTests(TempMixin, TestCase):
         run_scan(ctx=ctx)
         with mock.patch.object(repo, 'check_secrets', side_effect=RuntimeError('boom')):
             from .checks import CHECKS
-            patched = [c.__class__(c.id, c.label, c.machine, repo.check_secrets)
-                       if c.id == 'repo-secrets' else c for c in CHECKS]
+            from dataclasses import replace
+            patched = [replace(c, run=repo.check_secrets) if c.id == 'repo-secrets' else c
+                       for c in CHECKS]
             with mock.patch('scanner.engine.CHECKS', patched):
                 scan = run_scan(ctx=ctx)
         self.assertIn('repo-secrets', scan.errors)

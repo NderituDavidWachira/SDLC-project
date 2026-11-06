@@ -13,6 +13,7 @@ class Scan(models.Model):
     new_count = models.PositiveIntegerField(default=0)
     fixed_count = models.PositiveIntegerField(default=0)
     open_count = models.PositiveIntegerField(default=0)
+    areas = models.CharField(max_length=300, blank=True)
     errors = models.TextField(blank=True)
 
     class Meta:
@@ -44,6 +45,12 @@ class Finding(models.Model):
 
     class Meta:
         ordering = ['-last_seen']
+
+    @property
+    def area_label(self):
+        from .checks import AREA_LABELS, CHECKS
+        area = {c.id: c.area for c in CHECKS}.get(self.source, '')
+        return AREA_LABELS.get(area, '')
 
     def __str__(self):
         return f'{self.severity}: {self.title}'

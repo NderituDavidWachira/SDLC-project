@@ -6,7 +6,7 @@ from pathlib import Path
 from django.conf import settings
 from django.utils import timezone
 
-from .checks import CHECKS
+from .checks import AREA_LABELS, CHECKS, DEFAULT_AREAS
 from .checks.base import ScanContext
 from .models import Finding, Scan
 
@@ -23,11 +23,19 @@ def build_context():
     )
 
 
-def collect(ctx):
-    """Run all checks. Returns (results, ids of checks that did not complete)."""
+def clean_areas(areas):
+    """Keep only known area slugs, in registry order. None means the default set."""
+    if areas is None:
+        return list(DEFAULT_AREAS)
+    wanted = set(areas)
+    return [slug for slug in AREA_LABELS if slug in wanted]
+
+
+def collect(ctx, areas):
+    """Run the checks in `areas`. Returns (results, ids of checks not run, errors)."""
     results, not_run, errors = {}, set(), []
     for check in CHECKS:
-        if check.machine and not ctx.scan_machine:
+        if check.area not in areas or (check.machine and not ctx.scan_machine):
             not_run.add(check.id)
             continue
         try:
@@ -40,10 +48,13 @@ def collect(ctx):
     return results, not_run, errors
 
 
-def run_scan(user=None, ctx=None):
+def run_scan(user=None, ctx=None, areas=None):
+    """Scan the chosen areas. Findings from areas that were not scanned stay untouched."""
     ctx = ctx or build_context()
-    scan = Scan.objects.create(started_by=user if getattr(user, 'pk', None) else None)
-    results, not_run, errors = collect(ctx)
+    areas = clean_areas(areas)
+    scan = Scan.objects.create(started_by=user if getattr(user, 'pk', None) else None,
+                               areas=','.join(areas))
+    results, not_run, errors = collect(ctx, areas)
     now = timezone.now()
     new = 0
     for fp, r in results.items():

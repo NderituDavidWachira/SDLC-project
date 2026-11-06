@@ -7,7 +7,8 @@ from django.views import View
 from accounts.mixins import RoleRequiredMixin
 from audit.utils import record
 
-from .engine import run_scan
+from .checks import AREA_LABELS
+from .engine import clean_areas, run_scan
 from .models import Finding
 
 
@@ -15,13 +16,21 @@ class RunScanView(RoleRequiredMixin, View):
     allowed_roles = ('admin', 'analyst')
 
     def post(self, request):
-        scan = run_scan(user=request.user)
-        record(request, 'scan_run', f'{scan.new_count} new, {scan.fixed_count} fixed')
-        messages.success(request, f'Scan finished: {scan.new_count} new, '
-                                  f'{scan.fixed_count} fixed, {scan.open_count} open.')
+        areas = clean_areas(request.POST.getlist('areas'))
+        if not areas:
+            messages.error(request, 'Pick at least one area to scan.')
+            return redirect(reverse('dashboard'))
+        request.session['scan_areas'] = areas
+        scan = run_scan(user=request.user, areas=areas)
+        record(request, 'scan_run', f'{len(areas)} areas: {scan.new_count} new, '
+                                    f'{scan.fixed_count} fixed')
+        names = ', '.join(AREA_LABELS[a] for a in areas)
+        found = Finding.objects.filter(last_seen__gte=scan.started_at).count()
+        messages.success(request, f'Scan finished ({names}): {found} found, '
+                                  f'{scan.new_count} new, {scan.fixed_count} fixed.')
         if scan.errors:
             messages.error(request, 'Some checks could not run: ' + scan.errors)
-        return redirect(reverse('dashboard'))
+        return redirect(reverse('dashboard') + '?scan=last')  # show what THIS scan found
 
 
 class FindingStatusView(RoleRequiredMixin, View):

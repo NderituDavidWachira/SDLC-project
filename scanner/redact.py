@@ -43,8 +43,10 @@ def find_secrets(line):
         if _generic_value_ok(m.group(3), bool(m.group(2))):
             found.append(('Hard-coded password or token', 'High'))
             break
-    if FLAG_VALUE.search(line):
-        found.append(('Password or token passed on a command line', 'High'))
+    for m in FLAG_VALUE.finditer(line):
+        if _generic_value_ok(m.group(3).strip('\'"'), True):
+            found.append(('Password or token passed on a command line', 'High'))
+            break
     return found
 
 

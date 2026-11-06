@@ -8,7 +8,8 @@ from pathlib import Path
 
 SKIP_DIRS = {'.git', 'venv', '.venv', 'node_modules', '__pycache__', 'staticfiles',
              '.tox', 'dist', 'build', '.mypy_cache'}
-TEXT_SUFFIXES = {'.py', '.js', '.ts', '.json', '.yml', '.yaml', '.toml', '.ini', '.cfg',
+TEXT_SUFFIXES = {'.sublime-project', '.sublime-build', '.py', '.js', '.ts', '.json', '.yml',
+                 '.yaml', '.toml', '.ini', '.cfg',
                  '.env', '.txt', '.md', '.sh', '.ps1', '.bat', '.html', '.xml',
                  '.properties', '.conf'}
 TEXT_NAMES = {'Dockerfile', 'Jenkinsfile', '.env', '.npmrc', '.pypirc', '.netrc'}

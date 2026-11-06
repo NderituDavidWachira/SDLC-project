@@ -1,23 +1,49 @@
 {% extends 'base.html' %}
 {% block title %}Dashboard · SDLC Guard{% endblock %}
 {% block content %}
-<div class="head">
-  <div>
-    <h1>Is the code factory safe?</h1>
-    <p class="sub">{% if last_scan %}Last scan {{ last_scan.finished_at|date:"d M Y, H:i" }}
-      {% if last_scan.started_by %}by {{ last_scan.started_by }}{% endif %}
-      · {{ last_scan.new_count }} new · {{ last_scan.fixed_count }} fixed
-      {% else %}No scan has run yet.{% endif %}</p>
-  </div>
-  {% if can_scan %}
-  <form method="post" action="{% url 'run-scan' %}">{% csrf_token %}
-    <button class="btn" type="submit">Run scan now</button></form>
-  {% endif %}
-</div>
+<h1>Is the code factory safe?</h1>
+
+{% if can_scan %}
+<form method="post" action="{% url 'run-scan' %}" class="scanbar" id="scan-form">{% csrf_token %}
+  <details class="drop" id="scan-drop">
+    <summary><span>What to scan: <b id="scan-count">{{ selected }} of {{ total_areas }} areas</b></span></summary>
+    <div class="drop-panel">
+      <div class="head tight">
+        <span class="tag">Tick the areas, then press Run scan.</span>
+        <span class="tag"><button type="button" class="link" data-check-all="1">Select all</button> ·
+          <button type="button" class="link" data-check-all="0">Clear</button></span>
+      </div>
+      {% if not machine_on %}<p class="tag">Scanning this computer is switched off (SDLCGUARD_SCAN_MACHINE=0).</p>{% endif %}
+      <div class="areas">
+      {% for title, items in area_groups %}
+        <fieldset><legend>{{ title }}</legend>
+        {% for it in items %}
+          <label class="area {% if it.disabled %}off{% endif %}">
+            <input type="checkbox" name="areas" value="{{ it.a.slug }}" {% if it.on %}checked{% endif %} {% if it.disabled %}disabled{% endif %}>
+            <span><b>{{ it.a.label }}</b><small>{{ it.a.description }}</small></span>
+          </label>
+        {% endfor %}
+        </fieldset>
+      {% endfor %}
+      </div>
+    </div>
+  </details>
+  <button class="btn" type="submit" id="scan-btn">Run scan</button>
+  <button class="btn alt" type="button" id="refresh-btn" title="Reload the page to see the latest results">&#8635; Refresh</button>
+</form>
+{% endif %}
+
+<p class="laststrip">
+  {% if last_scan %}
+    <b>Last scan</b> {{ last_scan.finished_at|timesince }} ago · checked {{ last_areas }} ·
+    found {{ last_found }} ({{ last_scan.new_count }} new, {{ last_scan.fixed_count }} fixed)
+    {% if can_scan %}· <a href="#scan-form" id="scan-again">Scan again</a>{% endif %}
+  {% else %}No scan has run yet. Open "What to scan", pick the areas and press Run scan.{% endif %}
+</p>
 
 <div class="line" aria-label="Risk by pillar">
   {% for s in summaries %}
-  <a class="station {% if pillar == s.slug %}active{% endif %}" href="?pillar={{ s.slug }}{% if show_all %}&show=all{% endif %}">
+  <a class="station {% if pillar == s.slug %}active{% endif %}" href="?{% if keep_qs %}{{ keep_qs }}&{% endif %}pillar={{ s.slug }}">
     <div class="dot lv-{{ s.level }}">{{ s.open }}</div>
     <b>{{ s.name }}</b>
     <span>{{ s.level }} risk · {{ s.score }}/100</span>
@@ -34,13 +60,21 @@
 
 <section class="panel">
   <div class="head tight">
-    <h2>{% if pillar %}{{ pillar_name }} findings{% else %}All findings{% endif %}</h2>
-    <div class="tag">
-      {% if pillar %}<a href="?{% if show_all %}show=all{% endif %}">All pillars</a> · {% endif %}
-      {% if show_all %}<a href="?{% if pillar %}pillar={{ pillar }}{% endif %}">Show open only</a>
-      {% else %}<a href="?show=all{% if pillar %}&pillar={{ pillar }}{% endif %}">Include fixed and ignored</a>{% endif %}
-    </div>
+    <h2>{% if pillar %}{{ pillar_name }} findings{% else %}Findings{% endif %}</h2>
+    {% if pillar or area or only_last or show_all %}<a class="tag" href="?">Clear filters</a>{% endif %}
   </div>
+  <form method="get" class="filters" id="filter-form">
+    {% if pillar %}<input type="hidden" name="pillar" value="{{ pillar }}">{% endif %}
+    <div><label for="f-area">Area</label>
+      <select name="area" id="f-area"><option value="">All areas</option>
+        {% for a in area_options %}<option value="{{ a.slug }}" {% if area == a.slug %}selected{% endif %}>{{ a.label }}</option>{% endfor %}</select></div>
+    <div><label for="f-scan">Show</label>
+      <select name="scan" id="f-scan"><option value="">Everything found so far</option>
+        <option value="last" {% if only_last %}selected{% endif %}>Only what the last scan found</option></select></div>
+    <div><label for="f-show">Status</label>
+      <select name="show" id="f-show"><option value="">Open only</option>
+        <option value="all" {% if show_all %}selected{% endif %}>Include fixed and ignored</option></select></div>
+  </form>
   <table>
     <thead><tr><th>Severity</th><th>What was found</th><th>Where</th><th>Pillar</th>{% if can_change %}<th>Action</th>{% endif %}</tr></thead>
     <tbody>
@@ -48,7 +82,7 @@
       <tr>
         <td><span class="badge {{ f.severity }}">{{ f.severity }}</span></td>
         <td>
-          <strong>{{ f.title }}</strong>{% if f.status != 'open' %} <span class="tag">({{ f.get_status_display }})</span>{% endif %}
+          <strong>{{ f.title }}</strong>{% if f.area_label %} <span class="tag">· {{ f.area_label }}</span>{% endif %}{% if f.status != 'open' %} <span class="tag">({{ f.get_status_display }})</span>{% endif %}
           <details><summary>How to fix</summary>
             <p>{{ f.fix }}</p>
             {% if f.evidence %}<p class="tag">Evidence (secrets masked): <code>{{ f.evidence }}</code></p>{% endif %}
@@ -72,9 +106,50 @@
         {% endif %}
       </tr>
     {% empty %}
-      <tr><td colspan="5" class="muted">{% if last_scan %}Nothing to show. Good news, or run another scan.{% else %}Nothing here yet. Press "Run scan now" to check this computer and your projects.{% endif %}</td></tr>
+      <tr><td colspan="5" class="muted">{% if only_last %}The last scan found nothing in the areas it checked.{% elif last_scan %}Nothing matches these filters.{% else %}Nothing here yet. Choose what to scan and press Run scan.{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>
 </section>
+<script>
+(function () {
+  var drop = document.getElementById('scan-drop');
+  var form = document.getElementById('scan-form');
+  function boxes() { return document.querySelectorAll('input[name=areas]:not(:disabled)'); }
+  function update() {
+    var n = 0; boxes().forEach(function (c) { if (c.checked) n++; });
+    var el = document.getElementById('scan-count');
+    if (el) el.textContent = n + ' of ' + boxes().length + ' areas';
+  }
+  document.querySelectorAll('[data-check-all]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      boxes().forEach(function (c) { c.checked = b.dataset.checkAll === '1'; });
+      update();
+    });
+  });
+  boxes().forEach(function (c) { c.addEventListener('change', update); });
+  document.addEventListener('click', function (e) {          // close dropdown on outside click
+    if (drop && drop.open && !drop.contains(e.target)) { drop.open = false; }
+  });
+  if (form) {
+    form.addEventListener('submit', function () {
+      var btn = document.getElementById('scan-btn');
+      btn.textContent = 'Scanning...'; btn.disabled = true;
+      if (drop) { drop.open = false; }
+    });
+    document.getElementById('refresh-btn').addEventListener('click', function () {
+      window.location.href = window.location.pathname;      // reload with no filters
+    });
+  }
+  var again = document.getElementById('scan-again');
+  if (again) { again.addEventListener('click', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    drop.open = true; drop.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }); }
+  document.querySelectorAll('#filter-form select').forEach(function (sel) {
+    sel.addEventListener('change', function () { sel.form.submit(); });
+  });
+  update();
+})();
+</script>
 {% endblock %}
