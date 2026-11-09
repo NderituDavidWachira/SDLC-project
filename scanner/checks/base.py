@@ -45,6 +45,7 @@ class ScanContext:
     github_repo: str = ''
     github_token: str = ''
     trusted_publishers: tuple = ()
+    running: object = None  # set of running program names; None = do not check
 
 
 def short(path, home):

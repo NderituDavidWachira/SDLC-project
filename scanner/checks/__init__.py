@@ -6,6 +6,17 @@ from . import (credentials, dependencies, pipelines, production, repo, sublime, 
                vscode, vulns, browser)
 
 
+# Program names (lower case) that mean an app is open. Areas with no apps are always scanned.
+TERMINAL_APPS = ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'windowsterminal.exe', 'bash', 'zsh',
+                 'fish', 'terminal', 'iterm2', 'gnome-terminal', 'konsole', 'xterm')
+VSCODE_APPS = ('code.exe', 'code - insiders.exe', 'vscodium.exe', 'code', 'code-insiders',
+               'codium')
+SUBLIME_APPS = ('sublime_text.exe', 'sublime_text', 'sublime text')
+BROWSER_APPS = ('chrome.exe', 'msedge.exe', 'firefox.exe', 'brave.exe', 'chromium.exe',
+                'chrome', 'google-chrome', 'google chrome', 'chromium', 'chromium-browser',
+                'firefox', 'brave', 'brave-browser', 'msedge', 'microsoft edge', 'brave browser')
+
+
 @dataclass(frozen=True)
 class Area:
     slug: str
@@ -13,6 +24,7 @@ class Area:
     group: str  # 'computer' or 'project'
     description: str
     default: bool = True
+    apps: tuple = ()  # scanned only while one of these programs is running
 
 
 @dataclass(frozen=True)
@@ -26,11 +38,13 @@ class Check:
 
 AREAS = [
     Area('terminal', 'Terminal', 'computer',
-         'Risky commands in shell history, secrets in the environment'),
-    Area('vscode', 'VS Code', 'computer', 'Settings, extensions, tasks that auto-run'),
-    Area('sublime', 'Sublime Text', 'computer', 'Installed packages, risky build systems'),
+         'Risky commands in shell history, secrets in the environment', apps=TERMINAL_APPS),
+    Area('vscode', 'VS Code', 'computer', 'Settings, extensions, tasks that auto-run',
+         apps=VSCODE_APPS),
+    Area('sublime', 'Sublime Text', 'computer', 'Installed packages, risky build systems',
+         apps=SUBLIME_APPS),
     Area('browser', 'Web browser', 'computer',
-         'Chrome, Edge, Brave, Firefox: broad extensions, Safe Browsing'),
+         'Chrome, Edge, Brave, Firefox: broad extensions, Safe Browsing', apps=BROWSER_APPS),
     Area('credentials', 'Keys and logins', 'computer',
          'SSH keys, AWS/Kubernetes/Docker logins, npm and PyPI tokens, Git password storage'),
     Area('git', 'Git and GitHub', 'project',
@@ -49,6 +63,7 @@ AREAS = [
          default=False),
 ]
 AREA_LABELS = {a.slug: a.label for a in AREAS}
+AREA_BY_SLUG = {a.slug: a for a in AREAS}
 DEFAULT_AREAS = [a.slug for a in AREAS if a.default]
 
 CHECKS = [

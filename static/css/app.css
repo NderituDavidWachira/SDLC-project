@@ -105,3 +105,10 @@ button.link { background: none; border: 0; color: var(--accent); cursor: pointer
 .laststrip b { color: var(--ink); }
 .side { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; }
 @media (max-width: 860px) { .side { position: static; height: auto; } }
+.msg.warning { background: #fbf1d9; border-color: #ecd48f; }
+.pill { font-style: normal; font-size: 11px; padding: 1px 8px; border-radius: 9px; margin-left: 6px; vertical-align: 1px; }
+.pill.open { background: #e1efe6; color: #1f5a3a; }
+.pill.closed { background: #eceff1; color: #5d6f75; }
+.checked { margin: -8px 0 16px; font-size: 13px; color: var(--muted); }
+.checked summary { cursor: pointer; color: var(--accent); }
+.checked p { margin: 6px 0 0; line-height: 1.6; }

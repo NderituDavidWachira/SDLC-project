@@ -7,7 +7,9 @@ from django.views.generic import TemplateView
 
 from scanner.checks import AREA_LABELS, AREAS, CHECKS, DEFAULT_AREAS
 from scanner.constants import PILLAR_NAMES, PILLARS, SEVERITIES
+from scanner.engine import app_is_open
 from scanner.models import Finding, Scan
+from scanner.processes import running_programs
 from scanner.risk import risk_level, risk_score
 
 from . import charts
@@ -61,16 +63,26 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                                   ('show', 'all' if show_all else '')) if v}
         chosen = set(self.request.session.get('scan_areas', DEFAULT_AREAS))
         machine_on = settings.SDLCGUARD_SCAN_MACHINE
+        running = running_programs() if settings.SDLCGUARD_ONLY_OPEN_APPS else None
+
+        def status(a):  # 'open' / 'closed' for app areas, '' when it does not apply
+            if not a.apps or running is None:
+                return ''
+            return 'open' if app_is_open(a, running) else 'closed'
+
         groups = [
             ('Your computer', [{'a': a, 'on': a.slug in chosen and machine_on,
-                                'disabled': not machine_on}
+                                'disabled': not machine_on, 'status': status(a)}
                                for a in AREAS if a.group == 'computer']),
-            ('Your projects', [{'a': a, 'on': a.slug in chosen, 'disabled': False}
+            ('Your projects', [{'a': a, 'on': a.slug in chosen, 'disabled': False,
+                                'status': status(a)}
                                for a in AREAS if a.group == 'project']),
         ]
         selected = sum(1 for _title, items in groups for it in items if it['on'])
-        last_found, last_areas = 0, ''
+        last_found, last_areas, last_skipped = 0, '', ''
         if last_scan:
+            last_skipped = ', '.join(AREA_LABELS[a] for a in last_scan.skipped.split(',')
+                                     if a in AREA_LABELS)
             last_found = Finding.objects.filter(last_seen__gte=last_scan.started_at).count()
             last_areas = ', '.join(AREA_LABELS[a] for a in last_scan.areas.split(',')
                                    if a in AREA_LABELS) or 'all areas'
@@ -81,6 +93,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             show_all=show_all, area_groups=groups, machine_on=machine_on,
             area=area, only_last=only_last, area_options=AREAS, selected=selected,
             total_areas=len(AREAS), last_found=last_found, last_areas=last_areas,
+            last_skipped=last_skipped,
             keep_qs=urlencode(keep), last_scan=last_scan,
             can_scan=user.has_role('admin', 'analyst'),
             can_change=user.has_role('admin', 'analyst', 'devops'),

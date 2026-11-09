@@ -25,12 +25,22 @@ class RunScanView(RoleRequiredMixin, View):
         scan = run_scan(user=request.user, areas=areas)
         record(request, 'scan_run', f'{len(areas)} areas: {scan.new_count} new, '
                                     f'{scan.fixed_count} fixed')
-        names = ', '.join(AREA_LABELS[a] for a in areas)
+        skipped = [a for a in scan.skipped.split(',') if a]
+        ran = [a for a in areas if a not in skipped]
+        if skipped:
+            messages.warning(request, 'Not scanned because the app is not open: '
+                             + ', '.join(AREA_LABELS[a] for a in skipped)
+                             + '. Open it and scan again.')
+        if 'NOT FOUND' in scan.details:
+            messages.error(request, 'A scan folder does not exist. See "What was checked".')
+        if scan.errors:
+            messages.error(request, 'Some checks could not run: ' + scan.errors)
+        if not ran:
+            return redirect(reverse('dashboard'))
+        names = ', '.join(AREA_LABELS[a] for a in ran)
         found = Finding.objects.filter(last_seen__gte=scan.started_at).count()
         messages.success(request, f'Scan finished ({names}): {found} found, '
                                   f'{scan.new_count} new, {scan.fixed_count} fixed.')
-        if scan.errors:
-            messages.error(request, 'Some checks could not run: ' + scan.errors)
         return redirect(reverse('dashboard') + '?scan=last')  # show what THIS scan found
 
 

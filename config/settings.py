@@ -127,3 +127,5 @@ SDLCGUARD_TRUSTED_VSCODE_PUBLISHERS = (
     'github', 'redhat', 'esbenp', 'dbaeumer', 'eamodio', 'batisteo', 'tamasfe', 'hashicorp',
     'golang', 'rust-lang', 'vscjava', 'gitlab', 'pkief', 'bradlc', 'mikestead',
     'visualstudioexptteam', 'donjayamanne', 'formulahendry', 'oderwat', 'ritwickdey')
+# Scan an app's area only while that app is open (Terminal, VS Code, Sublime, browser).
+SDLCGUARD_ONLY_OPEN_APPS = os.environ.get('SDLCGUARD_ONLY_OPEN_APPS', '1') == '1'

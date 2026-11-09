@@ -20,7 +20,7 @@
         {% for it in items %}
           <label class="area {% if it.disabled %}off{% endif %}">
             <input type="checkbox" name="areas" value="{{ it.a.slug }}" {% if it.on %}checked{% endif %} {% if it.disabled %}disabled{% endif %}>
-            <span><b>{{ it.a.label }}</b><small>{{ it.a.description }}</small></span>
+            <span><b>{{ it.a.label }}</b>{% if it.status %} <em class="pill {{ it.status }}">{{ it.status }}</em>{% endif %}<small>{{ it.a.description }}</small></span>
           </label>
         {% endfor %}
         </fieldset>
@@ -37,10 +37,15 @@
   {% if last_scan %}
     <b>Last scan</b> {{ last_scan.finished_at|timesince }} ago · checked {{ last_areas }} ·
     found {{ last_found }} ({{ last_scan.new_count }} new, {{ last_scan.fixed_count }} fixed)
+        {% if last_skipped %}· skipped (app not open): {{ last_skipped }}{% endif %}
     {% if can_scan %}· <a href="#scan-form" id="scan-again">Scan again</a>{% endif %}
   {% else %}No scan has run yet. Open "What to scan", pick the areas and press Run scan.{% endif %}
 </p>
 
+{% if last_scan and last_scan.details %}
+<details class="checked"><summary>What was checked</summary>
+  <p>{{ last_scan.details|linebreaksbr }}</p></details>
+{% endif %}
 <div class="line" aria-label="Risk by pillar">
   {% for s in summaries %}
   <a class="station {% if pillar == s.slug %}active{% endif %}" href="?{% if keep_qs %}{{ keep_qs }}&{% endif %}pillar={{ s.slug }}">

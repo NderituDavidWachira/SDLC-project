@@ -14,6 +14,8 @@ class Scan(models.Model):
     fixed_count = models.PositiveIntegerField(default=0)
     open_count = models.PositiveIntegerField(default=0)
     areas = models.CharField(max_length=300, blank=True)
+    skipped = models.CharField(max_length=300, blank=True)  # areas whose app was closed
+    details = models.TextField(blank=True)  # human-readable 'what was checked'
     errors = models.TextField(blank=True)
 
     class Meta:
