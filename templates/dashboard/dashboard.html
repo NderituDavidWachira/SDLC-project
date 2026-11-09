@@ -29,7 +29,7 @@
     </div>
   </details>
   <button class="btn" type="submit" id="scan-btn">Run scan</button>
-  <button class="btn alt" type="button" id="refresh-btn" title="Reload the page to see the latest results">&#8635; Refresh</button>
+    <button class="btn alt" type="submit" id="refresh-btn" formaction="{% url 'clear-data' %}" title="Clear all findings and scan history and start fresh">&#8635; Refresh</button>
 </form>
 {% endif %}
 
@@ -132,13 +132,18 @@
     if (drop && drop.open && !drop.contains(e.target)) { drop.open = false; }
   });
   if (form) {
-    form.addEventListener('submit', function () {
-      var btn = document.getElementById('scan-btn');
-      btn.textContent = 'Scanning...'; btn.disabled = true;
+        form.addEventListener('submit', function (e) {
+      var clearing = e.submitter && e.submitter.id === 'refresh-btn';
+      if (clearing && !confirm('Refresh clears ALL findings and scan history so you can start ' +
+                               'fresh. This cannot be undone. Continue?')) {
+        e.preventDefault();
+        return;
+      }
+      if (!clearing) {
+        var btn = document.getElementById('scan-btn');
+        btn.textContent = 'Scanning...'; btn.disabled = true;
+      }
       if (drop) { drop.open = false; }
-    });
-    document.getElementById('refresh-btn').addEventListener('click', function () {
-      window.location.href = window.location.pathname;      // reload with no filters
     });
   }
   var again = document.getElementById('scan-again');

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -9,7 +10,7 @@ from audit.utils import record
 
 from .checks import AREA_LABELS
 from .engine import clean_areas, run_scan
-from .models import Finding
+from .models import Finding, Scan
 
 
 class RunScanView(RoleRequiredMixin, View):
@@ -31,6 +32,23 @@ class RunScanView(RoleRequiredMixin, View):
         if scan.errors:
             messages.error(request, 'Some checks could not run: ' + scan.errors)
         return redirect(reverse('dashboard') + '?scan=last')  # show what THIS scan found
+
+
+class ClearDataView(RoleRequiredMixin, View):
+    """Start fresh: delete all findings and scan history. POST only, so that simply
+    reloading a page can never delete anything. The audit log is kept."""
+    allowed_roles = ('admin', 'analyst')
+    http_method_names = ['post']
+
+    def post(self, request):
+        with transaction.atomic():
+            findings, scans = Finding.objects.count(), Scan.objects.count()
+            Finding.objects.all().delete()
+            Scan.objects.all().delete()
+        record(request, 'data_cleared', f'{findings} findings, {scans} scans')
+        messages.success(request, 'All findings and scan history were cleared. '
+                                  'Choose what to scan and press Run scan.')
+        return redirect(reverse('dashboard'))
 
 
 class FindingStatusView(RoleRequiredMixin, View):

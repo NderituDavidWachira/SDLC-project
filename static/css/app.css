@@ -103,3 +103,5 @@ button.link { background: none; border: 0; color: var(--accent); cursor: pointer
 .btn:disabled { opacity: .6; cursor: wait; }
 .laststrip { color: var(--muted); margin: 0 0 18px; font-size: 14px; }
 .laststrip b { color: var(--ink); }
+.side { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; }
+@media (max-width: 860px) { .side { position: static; height: auto; } }

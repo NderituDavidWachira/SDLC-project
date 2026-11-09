@@ -13,9 +13,18 @@ SENSITIVE = {'cookies', 'webRequest', 'history', 'tabs', 'nativeMessaging', 'deb
 BUILT_IN_IDS = {'ghbmnnjooekpmoecnnnilnnbdlolhkhi'}  # Google Docs Offline
 
 
+def _dict(value):
+    return value if isinstance(value, dict) else {}
+
+
+def _list(value):
+    return value if isinstance(value, list) else []
+
+
 def _json(path):
+    """Read a JSON file. Always returns a dict, whatever the file contains."""
     try:
-        return json.loads(read_text(path))
+        return _dict(json.loads(read_text(path)))
     except ValueError:
         return {}
 
@@ -56,9 +65,9 @@ def _ext_name(ext_dir, manifest, ext_id):
         return name
     key = match.group(1).lower()
     for messages in sorted(ext_dir.glob('_locales/*/messages.json')):
-        data = {k.lower(): v for k, v in _json(messages).items()}
-        if key in data and isinstance(data[key], dict):
-            return str(data[key].get('message', ext_id))
+        entry = {str(k).lower(): v for k, v in _json(messages).items()}.get(key)
+        if isinstance(entry, dict):
+            return str(entry.get('message', ext_id))
     return ext_id
 
 
@@ -78,10 +87,10 @@ def check_extensions(ctx):
             if not versions or ext.name in BUILT_IN_IDS:
                 continue
             manifest = _json(versions[-1] / 'manifest.json')
-            perms = set(_flat(manifest.get('permissions', []))
-                        + _flat(manifest.get('host_permissions', [])))
-            for script in manifest.get('content_scripts', []):
-                perms |= set(_flat(script.get('matches', [])))
+            perms = set(_flat(_list(manifest.get('permissions')))
+                        + _flat(_list(manifest.get('host_permissions'))))
+            for script in _list(manifest.get('content_scripts')):
+                perms |= set(_flat(_list(_dict(script).get('matches'))))
             if perms & BROAD:
                 broad.append(_ext_name(versions[-1], manifest, ext.name))
                 sensitive = sensitive or bool(perms & SENSITIVE)
@@ -93,13 +102,15 @@ def check_extensions(ctx):
                 'Remove extensions you do not use. Keep only ones from publishers you trust.',
                 'Malicious browser extension', key=f'{browser}:{prof.name}:' + ','.join(broad)))
     for prof in firefox_profiles(ctx.home, ctx.env):
-        addons = _json(prof / 'extensions.json').get('addons', [])
         broad = []
-        for addon in addons:
-            origins = _flat(addon.get('userPermissions', {}).get('origins', []))
-            if addon.get('type') == 'extension' and addon.get('location') == 'app-profile' \
-                    and set(origins) & BROAD:
-                broad.append(str(addon.get('defaultLocale', {}).get('name', addon.get('id'))))
+        for addon in _list(_json(prof / 'extensions.json').get('addons')):
+            addon = _dict(addon)
+            if addon.get('type') != 'extension' or addon.get('location') != 'app-profile':
+                continue  # themes and built-in add-ons are not user-installed extensions
+            origins = _flat(_list(_dict(addon.get('userPermissions')).get('origins')))
+            if set(origins) & BROAD:
+                name = _dict(addon.get('defaultLocale')).get('name') or addon.get('id')
+                broad.append(str(name))
         if broad:
             results.append(Result(
                 'browser-extensions', PILLAR, 'Low',
@@ -114,7 +125,7 @@ def check_safe_browsing(ctx):
     results = []
     for browser, prof in chromium_profiles(ctx.home, ctx.env):
         prefs = _json(prof / 'Preferences')
-        if prefs.get('safebrowsing', {}).get('enabled') is False:
+        if _dict(prefs.get('safebrowsing')).get('enabled') is False:
             results.append(Result(
                 'browser-safe-browsing-off', PILLAR, 'High',
                 f'{browser} Safe Browsing is turned off', f'{browser} profile "{prof.name}"',

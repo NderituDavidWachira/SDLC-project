@@ -1,4 +1,5 @@
 """Run every check, then sync the results into the database."""
+import logging
 import os
 from dataclasses import replace
 from pathlib import Path
@@ -9,6 +10,8 @@ from django.utils import timezone
 from .checks import AREA_LABELS, CHECKS, DEFAULT_AREAS
 from .checks.base import ScanContext
 from .models import Finding, Scan
+
+log = logging.getLogger(__name__)
 
 
 def build_context():
@@ -43,8 +46,9 @@ def collect(ctx, areas):
                 r = replace(r, source=check.id)
                 results[r.fingerprint] = r
         except Exception as exc:  # one broken check must not stop the whole scan
-            not_run.add(check.id)
-            errors.append(f'{check.id}: {type(exc).__name__}')
+                        not_run.add(check.id)
+                        log.exception('Scan check %s failed', check.id)
+                        errors.append(f'{check.id}: {type(exc).__name__}: {str(exc)[:100]}')
     return results, not_run, errors
 
 
